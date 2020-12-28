@@ -26,7 +26,7 @@ let plain_out = aes_unwrap_key_with_pad(&kek, &encrypted);
 - [RFC5649](https://www.ietf.org/rfc/rfc5649.txt)
   - Advanced Encryption Standard (AES) Key Wrap with Padding Algorithm
 - [Rust AES Keywrap](https://github.com/jedisct1/rust-aes-keywrap)
-  - It doesn't support RFC3394 and RFC5649 now. [issue #2](https://github.com/jedisct1/rust-aes-keywrap/issues/2)
+  - It doesn't support RFC3394 now. [issue #2](https://github.com/jedisct1/rust-aes-keywrap/issues/2)
 - [aes-keywrap-py](https://github.com/kurtbrose/aes_keywrap/blob/master/aes_keywrap.py)
   - Strongly inspired by this python module.
 - [AesKeyWrap(C++)](https://github.com/ikluft/AESKeyWrap/blob/master/src/AesKeyWrap.cpp) and [AesKeyWrap Test(C++)](https://github.com/ikluft/AESKeyWrap/blob/master/test/AesKeyWrapTest.cpp)

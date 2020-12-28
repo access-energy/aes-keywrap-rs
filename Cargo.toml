@@ -7,7 +7,6 @@ description = "AES Key Wrap for Rust (AES-KW, RFC 3394 / RFC 5649)"
 keywords = ["crypto", "aes", "keywrap", "aes-kw", "aes-ecb"]
 readme="README.md"
 license="MIT"
-license-file="LICENSE.txt"
 repository = "https://github.com/hwiorn/aes-keywrap-rs"
 homepage = "https://github.com/hwiorn/aes-keywrap-rs"
 categories = ["algorithms", "cryptography"]

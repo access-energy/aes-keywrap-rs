@@ -3,8 +3,14 @@ name = "aes-keywrap-rs"
 version = "0.1.0"
 authors = ["hwiorn (Tim Lee) <hwiorn@gmail.com>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "AES Key Wrap for Rust (AES-KW, RFC 3394 / RFC 5649)"
+keywords = ["crypto", "aes", "keywrap", "aes-kw", "aes-ecb"]
+readme="README.md"
+license="MIT"
+license-file="LICENSE.txt"
+repository = "https://github.com/hwiorn/aes-keywrap-rs"
+homepage = "https://github.com/hwiorn/aes-keywrap-rs"
+categories = ["algorithms", "cryptography"]
 
 [dependencies]
 hex = "0.4.2"

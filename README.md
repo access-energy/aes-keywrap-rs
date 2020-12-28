@@ -1,16 +1,22 @@
 # AES Key Wrap for Rust
 
-This crate is an AES Keywrap (RFC 3394 / RFC 5649) implementation for Rust.
-
-It has implemented AES KeyWrap(128/192/256 ECB mode) using [Crypto2](https://github.com/shadowsocks/crypto2).
+This crate implements the AES KeyWrap(RFC 3394 / RFC 5649) using AES Block function(128/192/256 ECB mode) of [Crypto2](https://github.com/shadowsocks/crypto2).
 
 ## Usage
 
 ```rust
 let kek = hex::decode("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F").unwrap();
-let cipher = hex::decode("A8F9BC1612C68B3FF6E6F4FBE30E71E4769C8B80A32CB8958CD5D17D6B254DA1").unwrap();
+let encrypted = hex::decode("A8F9BC1612C68B3FF6E6F4FBE30E71E4769C8B80A32CB8958CD5D17D6B254DA1").unwrap();
 let plain = hex::decode("00112233445566778899AABBCCDDEEFF0001020304050607").unwrap();
-aes_wrap_key(&kek, &plain);
+let encrypted_out = aes_wrap_key(&kek, &plain);
+let plain_out = aes_unwrap_key(&kek, &encrypted);
+```
+
+### RFC5649
+
+```rust
+let encrypted_out = aes_wrap_key_with_pad(&kek, &plain);
+let plain_out = aes_unwrap_key_with_pad(&kek, &encrypted);
 ```
 
 ## References

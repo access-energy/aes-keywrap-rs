@@ -4,19 +4,21 @@ This crate implements the AES KeyWrap(RFC 3394 / RFC 5649) using AES Block funct
 
 ## Usage
 
+### Keywrap
+
 ```rust
 let kek = hex::decode("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F").unwrap();
 let encrypted = hex::decode("A8F9BC1612C68B3FF6E6F4FBE30E71E4769C8B80A32CB8958CD5D17D6B254DA1").unwrap();
 let plain = hex::decode("00112233445566778899AABBCCDDEEFF0001020304050607").unwrap();
-let encrypted_out = aes_wrap_key(&kek, &plain);
-let plain_out = aes_unwrap_key(&kek, &encrypted);
+let encrypted_out = aes_wrap_key(&kek, &plain).unwrap();
+let plain_out = aes_unwrap_key(&kek, &encrypted).unwrap();
 ```
 
-### RFC5649
+### Keywrap with Padding(RFC5649)
 
 ```rust
-let encrypted_out = aes_wrap_key_with_pad(&kek, &plain);
-let plain_out = aes_unwrap_key_with_pad(&kek, &encrypted);
+let encrypted_out = aes_wrap_key_with_pad(&kek, &plain).unwrap();
+let plain_out = aes_unwrap_key_with_pad(&kek, &encrypted).unwrap();
 ```
 
 ## References

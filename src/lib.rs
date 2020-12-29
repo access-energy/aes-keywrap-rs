@@ -5,8 +5,12 @@ use crypto2::blockmode::{Aes128Ecb, Aes192Ecb, Aes256Ecb};
 use std::io::Write;
 
 // constants for initial value in primary (RFC3394) and extended (RFC5649) definition
-pub const IV_3394: [u8; 8] = [0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6]; // from RFC3394 Section 2.2.3.1
-pub const IV_5649: [u8; 4] = [0xa6, 0x59, 0x59, 0xa6]; // from RFC5649 Section 3
+/// Initial value from RFC3394 Section 2.2.3.1
+/// http://www.ietf.org/rfc/rfc3394.txt
+pub const IV_3394: [u8; 8] = [0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6, 0xa6];
+/// Alternate initial value for aes key wrapping, as defined in RFC 5649 section 3
+/// http://www.ietf.org/rfc/rfc5649.txt
+pub const IV_5649: [u8; 4] = [0xa6, 0x59, 0x59, 0xa6];
 
 // See the AES Key Wrap definition RFC and update
 // * RFC3394 "Advanced Encryption Standard (AES) Key Wrap Algorithm"
@@ -46,67 +50,59 @@ fn u64_from_be_u8(buffer: &[u8; 8]) -> u64 {
         | u64::from(buffer[0]) << 56
 }
 
-#[inline(always)]
-pub fn u64_as_u8(src: &[u64]) -> &[u8] {
-    unsafe { core::slice::from_raw_parts(src.as_ptr() as *const u8, src.len() * 8) }
-}
-
-#[inline(always)]
-pub fn u32_as_u8(src: &[u32]) -> &[u8] {
-    unsafe { core::slice::from_raw_parts(src.as_ptr() as *const u8, src.len() * 8) }
-}
-
-/// key wrapping as defined in RFC 3394
-/// http://www.ietf.org/rfc/rfc3394.txt
-pub fn aes_unwrap_key(kek: &[u8], wrapped: &[u8]) -> Vec<u8> {
-    let (key, key_iv) = aes_unwrap_key_and_iv(kek, wrapped);
+/// Unwrap key and Check IV in RFC3394
+pub fn aes_unwrap_key(kek: &[u8], wrapped: &[u8]) -> Result<Vec<u8>, String> {
+    let (key, key_iv) = aes_unwrap_key_and_iv(kek, wrapped)?;
     if key_iv != IV_3394 {
-        panic!("{}", "ERROR");
+        return Err(String::from("Key IV error"));
     }
 
-    return key;
+    Ok(key)
 }
 
-pub fn aes_unwrap_key_and_iv(kek: &[u8], wrapped: &[u8]) -> (Vec<u8>, Vec<u8>) {
+/// Unwrap and return the key and IV
+pub fn aes_unwrap_key_and_iv(kek: &[u8], wrapped: &[u8]) -> Result<(Vec<u8>, Vec<u8>), String> {
     match kek.len() {
         16 => Aes128Kw::aes_unwrap_key_and_iv(kek, wrapped),
         24 => Aes192Kw::aes_unwrap_key_and_iv(kek, wrapped),
         32 => Aes256Kw::aes_unwrap_key_and_iv(kek, wrapped),
-        _ => panic!("kek is not supported: {:?}", kek),
+        _ => Err(format!("kek is not supported: {:?}", kek)),
     }
 }
 
-/// alternate initial value for aes key wrapping, as defined in RFC 5649 section 3
-/// http://www.ietf.org/rfc/rfc5649.txt
+/// Unwrap key with pad using padding algorithm (RFC5649) 
 #[inline]
-pub fn aes_unwrap_key_with_pad(kek: &[u8], wrapped: &[u8]) -> Vec<u8> {
+pub fn aes_unwrap_key_with_pad(kek: &[u8], wrapped: &[u8]) -> Result<Vec<u8>, String> {
     match kek.len() {
         16 => Aes128Kw::aes_unwrap_key_with_pad(kek, wrapped),
         24 => Aes192Kw::aes_unwrap_key_with_pad(kek, wrapped),
         32 => Aes256Kw::aes_unwrap_key_with_pad(kek, wrapped),
-        _ => panic!("kek is not supported: {:?}", kek),
+        _ => Err(format!("kek is not supported: {:?}", kek)),
     }
 }
 
-pub fn aes_wrap_key_and_iv(kek: &[u8], plaintext: &[u8], iv: &[u8]) -> Vec<u8> {
+/// Wrap key with specific IV
+pub fn aes_wrap_key_and_iv(kek: &[u8], plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, String> {
     match kek.len() {
         16 => Aes128Kw::aes_wrap_key_and_iv(kek, plaintext, iv),
         24 => Aes192Kw::aes_wrap_key_and_iv(kek, plaintext, iv),
         32 => Aes256Kw::aes_wrap_key_and_iv(kek, plaintext, iv),
-        _ => panic!("kek is not supported: {:?}", kek),
+        _ => Err(format!("kek is not supported: {:?}", kek)),
     }
 }
 
-pub fn aes_wrap_key(kek: &[u8], plaintext: &[u8]) -> Vec<u8> {
-    return aes_wrap_key_and_iv(kek, plaintext, &IV_3394);
+/// Wrap key with the IV defined in RFC3394
+pub fn aes_wrap_key(kek: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, String> {
+    aes_wrap_key_and_iv(kek, plaintext, &IV_3394)
 }
 
-pub fn aes_wrap_key_with_pad(kek: &[u8], plaintext: &[u8]) -> Vec<u8> {
+/// Wrap key with pad using padding algorithm (RFC5649) 
+pub fn aes_wrap_key_with_pad(kek: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, String> {
     match kek.len() {
         16 => Aes128Kw::aes_wrap_key_with_pad(kek, plaintext),
         24 => Aes192Kw::aes_wrap_key_with_pad(kek, plaintext),
         32 => Aes256Kw::aes_wrap_key_with_pad(kek, plaintext),
-        _ => panic!("kek is not supported: {:?}", kek),
+        _ => Err(format!("kek is not supported: {:?}", kek)),
     }
 }
 
@@ -115,7 +111,7 @@ macro_rules! impl_aes_keywrap {
         pub struct $name {}
 
         impl $name {
-            pub fn aes_unwrap_key_and_iv(kek: &[u8], wrapped: &[u8]) -> (Vec<u8>, Vec<u8>) {
+            pub fn aes_unwrap_key_and_iv(kek: &[u8], wrapped: &[u8]) -> Result<(Vec<u8>, Vec<u8>), String> {
                 let n = wrapped.len() / 8 - 1;
                 let mut r: Vec<[u8; 8]> = Vec::new();
                 r.push([0u8; 8]);
@@ -144,10 +140,10 @@ macro_rules! impl_aes_keywrap {
                     key.write(v).unwrap();
                 }
 
-                (key, a.to_be_bytes().to_vec())
+                Ok((key, a.to_be_bytes().to_vec()))
             }
 
-            pub fn aes_wrap_key_and_iv(kek: &[u8], plaintext: &[u8], iv: &[u8]) -> Vec<u8> {
+            pub fn aes_wrap_key_and_iv(kek: &[u8], plaintext: &[u8], iv: &[u8]) -> Result<Vec<u8>, String> {
                 let n = plaintext.len() / 8;
                 let mut r: Vec<[u8; 8]> = Vec::new();
                 r.push([0u8; 8]);
@@ -175,10 +171,10 @@ macro_rules! impl_aes_keywrap {
                     ret.write(v).unwrap();
                 }
 
-                ret
+                Ok(ret)
             }
 
-            pub fn aes_unwrap_key_with_pad(kek: &[u8], wrapped: &[u8]) -> Vec<u8> {
+            pub fn aes_unwrap_key_with_pad(kek: &[u8], wrapped: &[u8]) -> Result<Vec<u8>, String> {
                 let mut key: Vec<u8> = Vec::new();
                 let mut key_iv: Vec<u8> = Vec::new();
                 if wrapped.len() == 16 {
@@ -189,24 +185,24 @@ macro_rules! impl_aes_keywrap {
                     key_iv.write(&plaintext[..8]).unwrap();
                     key.write(&plaintext[8..]).unwrap();
                 } else {
-                    let (_key, _key_iv) = aes_unwrap_key_and_iv(kek, wrapped);
+                    let (_key, _key_iv) = aes_unwrap_key_and_iv(kek, wrapped)?;
                     key.write(&_key).unwrap();
                     key_iv.write(&_key_iv).unwrap();
                 }
 
                 if IV_5649 != to_u8_4_array(&key_iv[..4]) {
-                    panic!(
-                        "Integrity Check Failed: {:?} (expected A65959A6)",
-                        to_u8_4_array(&key_iv[..4])
+                    return Err(format!(
+                        "IV Check Failed: {:?} (expected A65959A6)",
+                        to_u8_4_array(&key_iv[..4]))
                     );
                 }
 
                 //RFC5649: 32bit fixed + 32bit length
                 let key_len: usize = u32_from_be_u8(&to_u8_4_array(&key_iv[4..])) as usize;
-                return key[..key_len].to_vec();
+                Ok(key[..key_len].to_vec())
             }
 
-            pub fn aes_wrap_key_with_pad(kek: &[u8], plaintext: &[u8]) -> Vec<u8> {
+            pub fn aes_wrap_key_with_pad(kek: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, String> {
                 let mut iv: Vec<u8> = Vec::new();
                 //RFC5649: 32bit fixed + 32bit length
                 iv.write(&IV_5649).unwrap();
@@ -225,10 +221,10 @@ macro_rules! impl_aes_keywrap {
                     wrapped.write(&iv).unwrap();
                     wrapped.write(&pad_pt).unwrap();
                     cipher.encrypt(&mut wrapped);
-                    return wrapped.to_vec();
+                    Ok(wrapped.to_vec())
+                } else {
+                    aes_wrap_key_and_iv(kek, &pad_pt, &iv)
                 }
-
-                return aes_wrap_key_and_iv(kek, &pad_pt, &iv);
             }
         }
     };
@@ -250,8 +246,8 @@ mod tests {
         let kek = hex::decode("000102030405060708090A0B0C0D0E0F").unwrap();
         let cipher = hex::decode("1FA68B0A8112B447AEF34BD8FB5A7B829D3E862371D2CFE5").unwrap();
         let plain = hex::decode("00112233445566778899AABBCCDDEEFF").unwrap();
-        assert_eq!(cipher, aes_wrap_key(&kek, &plain));
-        assert_eq!(plain, aes_unwrap_key(&kek, &cipher));
+        assert_eq!(cipher, aes_wrap_key(&kek, &plain).unwrap());
+        assert_eq!(plain, aes_unwrap_key(&kek, &cipher).unwrap());
     }
 
     #[test]
@@ -259,8 +255,8 @@ mod tests {
         let kek = hex::decode("000102030405060708090A0B0C0D0E0F1011121314151617").unwrap();
         let cipher = hex::decode("96778B25AE6CA435F92B5B97C050AED2468AB8A17AD84E5D").unwrap();
         let plain = hex::decode("00112233445566778899AABBCCDDEEFF").unwrap();
-        assert_eq!(cipher, aes_wrap_key(&kek, &plain));
-        assert_eq!(plain, aes_unwrap_key(&kek, &cipher));
+        assert_eq!(cipher, aes_wrap_key(&kek, &plain).unwrap());
+        assert_eq!(plain, aes_unwrap_key(&kek, &cipher).unwrap());
     }
 
     #[test]
@@ -269,8 +265,8 @@ mod tests {
             .unwrap();
         let cipher = hex::decode("64E8C3F9CE0F5BA263E9777905818A2A93C8191E7D6E8AE7").unwrap();
         let plain = hex::decode("00112233445566778899AABBCCDDEEFF").unwrap();
-        assert_eq!(cipher, aes_wrap_key(&kek, &plain));
-        assert_eq!(plain, aes_unwrap_key(&kek, &cipher));
+        assert_eq!(cipher, aes_wrap_key(&kek, &plain).unwrap());
+        assert_eq!(plain, aes_unwrap_key(&kek, &cipher).unwrap());
     }
 
     #[test]
@@ -280,8 +276,8 @@ mod tests {
             hex::decode("031D33264E15D33268F24EC260743EDCE1C6C7DDEE725A936BA814915C6762D2")
                 .unwrap();
         let plain = hex::decode("00112233445566778899AABBCCDDEEFF0001020304050607").unwrap();
-        assert_eq!(cipher, aes_wrap_key(&kek, &plain));
-        assert_eq!(plain, aes_unwrap_key(&kek, &cipher));
+        assert_eq!(cipher, aes_wrap_key(&kek, &plain).unwrap());
+        assert_eq!(plain, aes_unwrap_key(&kek, &cipher).unwrap());
     }
 
     #[test]
@@ -292,8 +288,8 @@ mod tests {
             hex::decode("A8F9BC1612C68B3FF6E6F4FBE30E71E4769C8B80A32CB8958CD5D17D6B254DA1")
                 .unwrap();
         let plain = hex::decode("00112233445566778899AABBCCDDEEFF0001020304050607").unwrap();
-        assert_eq!(cipher, aes_wrap_key(&kek, &plain));
-        assert_eq!(plain, aes_unwrap_key(&kek, &cipher));
+        assert_eq!(cipher, aes_wrap_key(&kek, &plain).unwrap());
+        assert_eq!(plain, aes_unwrap_key(&kek, &cipher).unwrap());
     }
 
     #[test]
@@ -306,8 +302,8 @@ mod tests {
         .unwrap();
         let plain = hex::decode("00112233445566778899AABBCCDDEEFF000102030405060708090A0B0C0D0E0F")
             .unwrap();
-        assert_eq!(cipher, aes_wrap_key(&kek, &plain));
-        assert_eq!(plain, aes_unwrap_key(&kek, &cipher));
+        assert_eq!(cipher, aes_wrap_key(&kek, &plain).unwrap());
+        assert_eq!(plain, aes_unwrap_key(&kek, &cipher).unwrap());
     }
 
     // RFC5649 tests
@@ -318,8 +314,8 @@ mod tests {
             hex::decode("138BDEAA9B8FA7FC61F97742E72248EE5AE6AE5360D1AE6A5F54F373FA543B6A")
                 .unwrap();
         let plain = hex::decode("C37B7E6492584340BED12207808941155068F738").unwrap();
-        assert_eq!(cipher, aes_wrap_key_with_pad(&kek, &plain));
-        assert_eq!(plain, aes_unwrap_key_with_pad(&kek, &cipher));
+        assert_eq!(cipher, aes_wrap_key_with_pad(&kek, &plain).unwrap());
+        assert_eq!(plain, aes_unwrap_key_with_pad(&kek, &cipher).unwrap());
     }
 
     #[test]
@@ -327,8 +323,8 @@ mod tests {
         let kek = hex::decode("5840DF6E29B02AF1AB493B705BF16EA1AE8338F4DCC176A8").unwrap();
         let cipher = hex::decode("AFBEB0F07DFBF5419200F2CCB50BB24F").unwrap();
         let plain = hex::decode("466F7250617369").unwrap();
-        assert_eq!(cipher, aes_wrap_key_with_pad(&kek, &plain));
-        assert_eq!(plain, aes_unwrap_key_with_pad(&kek, &cipher));
+        assert_eq!(cipher, aes_wrap_key_with_pad(&kek, &plain).unwrap());
+        assert_eq!(plain, aes_unwrap_key_with_pad(&kek, &cipher).unwrap());
     }
 
     #[bench]

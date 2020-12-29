@@ -1,5 +1,8 @@
 # AES Key Wrap for Rust
 
+[![Crates.io](https://img.shields.io/crates/v/aes-keywrap-rs.svg)](https://crates.io/crates/aes-keywrap-rs)
+[![Docs.rs](https://docs.rs/aes-keywrap-rs/badge.svg)](https://docs.rs/aes-keywrap-rs/)
+
 This crate implements the AES KeyWrap(RFC 3394 / RFC 5649) using AES Block function(128/192/256 ECB mode) of [Crypto2](https://github.com/shadowsocks/crypto2).
 
 ## Usage

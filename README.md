@@ -42,4 +42,4 @@ let plain_out = aes_unwrap_key_with_pad(&kek, &encrypted).unwrap();
 
 ## License
 
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- MIT license ([LICENSE](LICENSE.txt) or http://opensource.org/licenses/MIT)

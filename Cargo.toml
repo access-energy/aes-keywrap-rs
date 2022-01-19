@@ -1,6 +1,6 @@
 [package]
 name = "aes-keywrap-rs"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["hwiorn (Tim Lee) <hwiorn@gmail.com>"]
 edition = "2018"
 description = "AES Key Wrap for Rust (AES-KW, RFC 3394 / RFC 5649)"
@@ -13,4 +13,5 @@ categories = ["algorithms", "cryptography"]
 
 [dependencies]
 hex = "0.4.2"
-crypto2 = "0.1.1"
+aes = "0.7.5"
+block-modes = "0.8.1"

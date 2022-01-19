@@ -1,8 +1,12 @@
 #![feature(test)]
 extern crate test;
 
-use crypto2::blockmode::{Aes128Ecb, Aes192Ecb, Aes256Ecb};
+// use crypto2::blockmode::{Aes128Ecb, Aes192Ecb, Aes256Ecb};
+use aes::{Aes128, Aes192, Aes256, NewBlockCipher, BlockCipher, BlockDecrypt, BlockEncrypt};
+use block_modes::{Ecb, BlockMode};
+use block_modes::block_padding::NoPadding;
 use std::io::Write;
+use std::convert::TryInto;
 
 // constants for initial value in primary (RFC3394) and extended (RFC5649) definition
 /// Initial value from RFC3394 Section 2.2.3.1
@@ -70,7 +74,7 @@ pub fn aes_unwrap_key_and_iv(kek: &[u8], wrapped: &[u8]) -> Result<(Vec<u8>, Vec
     }
 }
 
-/// Unwrap key with pad using padding algorithm (RFC5649) 
+/// Unwrap key with pad using padding algorithm (RFC5649)
 #[inline]
 pub fn aes_unwrap_key_with_pad(kek: &[u8], wrapped: &[u8]) -> Result<Vec<u8>, String> {
     match kek.len() {
@@ -96,7 +100,7 @@ pub fn aes_wrap_key(kek: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, String> {
     aes_wrap_key_and_iv(kek, plaintext, &IV_3394)
 }
 
-/// Wrap key with pad using padding algorithm (RFC5649) 
+/// Wrap key with pad using padding algorithm (RFC5649)
 pub fn aes_wrap_key_with_pad(kek: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, String> {
     match kek.len() {
         16 => Aes128Kw::aes_wrap_key_with_pad(kek, plaintext),
@@ -107,7 +111,7 @@ pub fn aes_wrap_key_with_pad(kek: &[u8], plaintext: &[u8]) -> Result<Vec<u8>, St
 }
 
 macro_rules! impl_aes_keywrap {
-    ($name: tt, $cipher:tt) => {
+    ($name:ident, $cipher:ty) => {
         pub struct $name {}
 
         impl $name {
@@ -120,7 +124,9 @@ macro_rules! impl_aes_keywrap {
                 }
 
                 let mut a = u64_from_be_u8(&to_u8_8_array(&wrapped[..8]));
-                let mut cipher = $cipher::new(kek);
+                let block_cipher = <$cipher>::new(kek.try_into().unwrap());
+                let cipher: Ecb<$cipher, NoPadding> = Ecb::new(block_cipher, &Default::default());
+
 
                 for j in (0..6).rev() {
                     for i in (1..n + 1).rev() {
@@ -129,9 +135,9 @@ macro_rules! impl_aes_keywrap {
                             .write(&(a ^ (n * j + i) as u64).to_be_bytes())
                             .unwrap();
                         ciphertext.write(&r[i]).unwrap();
-                        cipher.decrypt(&mut ciphertext);
-                        a = u64_from_be_u8(&to_u8_8_array(&ciphertext[..8]));
-                        r[i].copy_from_slice(&ciphertext[8..]);
+                        let plaintext = cipher.clone().decrypt(&mut ciphertext).unwrap();
+                        a = u64_from_be_u8(&to_u8_8_array(&plaintext[..8]));
+                        r[i].copy_from_slice(&plaintext[8..]);
                     }
                 }
 
@@ -152,16 +158,17 @@ macro_rules! impl_aes_keywrap {
                 }
 
                 let mut a = u64_from_be_u8(&to_u8_8_array(&iv[..8]));
-                let mut cipher = $cipher::new(kek);
+                let block_cipher = <$cipher>::new(kek.try_into().unwrap());
+                let cipher: Ecb<$cipher, NoPadding> = Ecb::new(block_cipher, &Default::default());
 
                 for j in 0..6 {
                     for i in 1..n + 1 {
                         let mut ciphertext: Vec<u8> = Vec::new();
                         ciphertext.write(&a.to_be_bytes()).unwrap();
                         ciphertext.write(&r[i]).unwrap();
-                        cipher.encrypt(&mut ciphertext);
-                        a = u64_from_be_u8(&to_u8_8_array(&ciphertext[..8])) ^ (n * j + i) as u64;
-                        r[i].copy_from_slice(&ciphertext[8..]);
+                        let plaintext = cipher.clone().encrypt(&mut ciphertext, 16).unwrap();
+                        a = u64_from_be_u8(&to_u8_8_array(&plaintext[..8])) ^ (n * j + i) as u64;
+                        r[i].copy_from_slice(&plaintext[8..]);
                     }
                 }
 
@@ -178,10 +185,11 @@ macro_rules! impl_aes_keywrap {
                 let mut key: Vec<u8> = Vec::new();
                 let mut key_iv: Vec<u8> = Vec::new();
                 if wrapped.len() == 16 {
-                    let mut cipher = $cipher::new(kek);
+                    let block_cipher = <$cipher>::new(kek.try_into().unwrap());
+                    let cipher: Ecb<$cipher, NoPadding> = Ecb::new(block_cipher, &Default::default());
                     let mut plaintext: Vec<u8> = Vec::new();
                     plaintext.write(wrapped).unwrap();
-                    cipher.decrypt(&mut plaintext);
+                    cipher.decrypt(&mut plaintext).unwrap();
                     key_iv.write(&plaintext[..8]).unwrap();
                     key.write(&plaintext[8..]).unwrap();
                 } else {
@@ -216,11 +224,13 @@ macro_rules! impl_aes_keywrap {
                 }
 
                 if pad_pt.len() == 8 {
-                    let mut cipher = $cipher::new(kek);
+                    let block_cipher = <$cipher>::new(kek.try_into().unwrap());
+                    let cipher: Ecb<$cipher, NoPadding> = Ecb::new(block_cipher, &Default::default());
                     let mut wrapped: Vec<u8> = Vec::new();
                     wrapped.write(&iv).unwrap();
                     wrapped.write(&pad_pt).unwrap();
-                    cipher.encrypt(&mut wrapped);
+                    let n = wrapped.len();
+                    cipher.encrypt(&mut wrapped, n).unwrap();
                     Ok(wrapped.to_vec())
                 } else {
                     aes_wrap_key_and_iv(kek, &pad_pt, &iv)
@@ -230,9 +240,9 @@ macro_rules! impl_aes_keywrap {
     };
 }
 
-impl_aes_keywrap!(Aes128Kw, Aes128Ecb);
-impl_aes_keywrap!(Aes192Kw, Aes192Ecb);
-impl_aes_keywrap!(Aes256Kw, Aes256Ecb);
+impl_aes_keywrap!(Aes128Kw, Aes128);
+impl_aes_keywrap!(Aes192Kw, Aes192);
+impl_aes_keywrap!(Aes256Kw, Aes256);
 
 #[cfg(test)]
 mod tests {

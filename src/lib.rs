@@ -1,6 +1,3 @@
-#![feature(test)]
-extern crate test;
-
 // use crypto2::blockmode::{Aes128Ecb, Aes192Ecb, Aes256Ecb};
 use aes::{Aes128, Aes192, Aes256, NewBlockCipher, BlockCipher, BlockDecrypt, BlockEncrypt};
 use block_modes::{Ecb, BlockMode};
@@ -248,7 +245,6 @@ impl_aes_keywrap!(Aes256Kw, Aes256);
 mod tests {
     use super::*;
     use hex;
-    use test::Bencher;
 
     // RFC3394 tests
     #[test]
@@ -335,55 +331,5 @@ mod tests {
         let plain = hex::decode("466F7250617369").unwrap();
         assert_eq!(cipher, aes_wrap_key_with_pad(&kek, &plain).unwrap());
         assert_eq!(plain, aes_unwrap_key_with_pad(&kek, &cipher).unwrap());
-    }
-
-    #[bench]
-    fn bench_128bit_key_wrap(b: &mut Bencher) {
-        b.iter(|| {
-            for _ in 0..100 {
-                let kek = hex::decode("000102030405060708090A0B0C0D0E0F").unwrap();
-                let plain = hex::decode("00112233445566778899AABBCCDDEEFF").unwrap();
-                aes_wrap_key(&kek, &plain);
-            }
-        });
-    }
-
-    #[bench]
-    fn bench_128bit_key_unwrap(b: &mut Bencher) {
-        b.iter(|| {
-            for _ in 0..100 {
-                let kek = hex::decode("000102030405060708090A0B0C0D0E0F").unwrap();
-                let cipher =
-                    hex::decode("1FA68B0A8112B447AEF34BD8FB5A7B829D3E862371D2CFE5").unwrap();
-                aes_unwrap_key(&kek, &cipher);
-            }
-        });
-    }
-
-    #[bench]
-    fn bench_15628bit_key_wrap(b: &mut Bencher) {
-        b.iter(|| {
-            for _ in 0..100 {
-                let kek =
-                    hex::decode("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F")
-                        .unwrap();
-                let plain = hex::decode("00112233445566778899AABBCCDDEEFF").unwrap();
-                aes_wrap_key(&kek, &plain);
-            }
-        });
-    }
-
-    #[bench]
-    fn bench_256bit_key_unwrap(b: &mut Bencher) {
-        b.iter(|| {
-            for _ in 0..100 {
-                let kek =
-                    hex::decode("000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F")
-                        .unwrap();
-                let cipher =
-                    hex::decode("64E8C3F9CE0F5BA263E9777905818A2A93C8191E7D6E8AE7").unwrap();
-                aes_unwrap_key(&kek, &cipher);
-            }
-        });
     }
 }
